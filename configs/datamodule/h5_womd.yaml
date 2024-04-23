@@ -1,7 +1,7 @@
 _target_: data_modules.data_h5_womd.DataH5womd
 
 data_dir: datasets/waymo
-filename_train: validation
+filename_train: training
 filename_val: validation
 filename_test: testing
 n_agent: 64

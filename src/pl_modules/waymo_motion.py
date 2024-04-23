@@ -9,6 +9,7 @@ import numpy as np
 import wandb
 from pathlib import Path
 from utils.vis_waymo import VisWaymo
+import pdb
 
 
 class WaymoMotion(LightningModule):
@@ -115,6 +116,7 @@ class WaymoMotion(LightningModule):
         )
         # print(pred_dict["pred"].shape)
 
+        # pdb.set_trace()
         # ! post-processing
         # for _ in range(self.hparams.inference_repeat_n):
         pred_dict = self.post_processing(pred_dict)

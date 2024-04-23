@@ -10,7 +10,7 @@ from .modules.transformer import TransformerBlock
 from .modules.decoder_ensemble import DecoderEnsemble, MLPHead
 from .modules.rpe import get_rel_dist, get_tgt_knn_idx
 from .modules.multi_modal import MultiModalAnchors
-
+import pdb
 
 class Decoder(nn.Module):
     def __init__(
@@ -310,6 +310,9 @@ class Decoder(nn.Module):
 
         #  generate output
         anchor_emb = anchor_emb.view(n_scene, n_agent, self.n_pred, self.hidden_dim)
+
+        pdb.set_trace()
+
         conf, pred = self.mlp_head(agent_valid, anchor_emb, agent_type)
 
         return conf, pred
@@ -419,11 +422,9 @@ class SceneCentricGlobal(nn.Module):
                 emb_invalid = ~torch.cat([map_valid.any(-1), tl_valid, agent_valid.any(-1)], dim=1)
             rel_dist = get_rel_dist(torch.cat([map_pos, tl_pos, agent_pos], dim=1), emb_invalid)
 
-        map_emb, map_valid, tl_emb, tl_valid, agent_emb, agent_valid = self.intra_class_encoder(
+        map_emb, map_valid, tl_emb, tl_valid = self.intra_class_encoder.encode_map(
             inference_repeat_n=inference_repeat_n,
             inference_cache_map=inference_cache_map,
-            agent_valid=agent_valid,
-            agent_attr=agent_attr,
             map_valid=map_valid,
             map_attr=map_attr,
             tl_valid=tl_valid,
@@ -431,6 +432,14 @@ class SceneCentricGlobal(nn.Module):
             rel_dist=rel_dist,
             dist_limit_map=self.dist_limit_map,
             dist_limit_tl=self.dist_limit_tl,
+        )
+
+        agent_emb, agent_valid = self.intra_class_encoder.encode_agent(
+            inference_repeat_n=inference_repeat_n,
+            inference_cache_map=inference_cache_map,
+            agent_valid=agent_valid,
+            agent_attr=agent_attr,
+            rel_dist=rel_dist,
             dist_limit_agent=dist_limit_agent,
         )
 
@@ -598,6 +607,105 @@ class IntraClassEncoder(nn.Module):
                 ]
             )
 
+    def encode_map(self,
+        inference_repeat_n: int,
+        inference_cache_map: bool,
+        map_valid: Tensor,
+        map_attr: Tensor,
+        tl_valid: Tensor,
+        tl_attr: Tensor,
+        rel_dist: Tensor,
+        dist_limit_map: float,
+        dist_limit_tl: float
+        ):
+        n_scene, n_tl = tl_valid.shape
+        n_scene, n_map = map_valid.shape[0], map_valid.shape[1]
+        _idx_scene = torch.arange(n_scene)[:, None, None]  # [n_scene, 1, 1]
+        # ! map
+        _n_repeat_map = 1 if inference_cache_map else inference_repeat_n
+        for _ in range(_n_repeat_map):
+            map_emb, map_valid_reduced = self._mlp_map(map_attr, map_valid)  # [n_scene, n_map, hidden_dim]
+            if self.tf_map is not None:
+                _map_invalid = ~map_valid_reduced
+                _map_idx_knn, _map_invalid_knn, _ = get_tgt_knn_idx(
+                    _map_invalid, None, rel_dist[:, :n_map, :n_map], self.n_tgt_knn, dist_limit=dist_limit_map
+                )
+                _idx_map = torch.arange(n_map)[None, :, None]  # [1, n_map, 1]
+                for mod in self.tf_map:
+                    _tgt = map_emb.unsqueeze(1).expand(-1, n_map, -1, -1)
+                    if _map_idx_knn is not None:
+                        _tgt = _tgt[_idx_scene, _idx_map, _map_idx_knn]
+                    map_emb, _ = mod(
+                        src=map_emb,  # [n_scene, n_map, hidden_dim]
+                        src_padding_mask=_map_invalid,  # [n_scene, n_map]
+                        tgt=_tgt,
+                        tgt_padding_mask=_map_invalid_knn,  # [n_scene, n_map, n_tgt_knn]
+                    )
+            
+        # ! traffic lights
+        for _ in range(inference_repeat_n):
+            tl_emb = self.fc_tl(tl_attr, tl_valid)  # [n_scene, n_tl, hidden_dim]
+            if self.tf_tl is not None:
+                _tl_invalid = ~tl_valid
+                _tl_idx_knn, _tl_invalid_knn, _ = get_tgt_knn_idx(
+                    _tl_invalid,
+                    None,
+                    rel_dist[:, n_map : n_map + n_tl, n_map : n_map + n_tl],
+                    self.n_tgt_knn,
+                    dist_limit=dist_limit_tl,
+                )
+                _idx_tl = torch.arange(n_tl)[None, :, None]  # [1, n_tl, 1]
+                for mod in self.tf_tl:
+                    _tgt = tl_emb.unsqueeze(1).expand(-1, n_tl, -1, -1)
+                    if _tl_idx_knn is not None:
+                        _tgt = _tgt[_idx_scene, _idx_tl, _tl_idx_knn]
+                    tl_emb, _ = mod(
+                        src=tl_emb,  # [n_scene, n_tl, hidden_dim]
+                        src_padding_mask=_tl_invalid,  # [n_scene, n_tl]
+                        tgt=_tgt,
+                        tgt_padding_mask=_tl_invalid_knn,  # [n_scene, n_tl, n_tgt_knn]
+                    )
+
+        return map_emb, map_valid_reduced, tl_emb, tl_valid
+
+    def encode_agent(self,
+        inference_repeat_n: int,
+        inference_cache_map: bool,
+        agent_valid: Tensor,
+        agent_attr: Tensor,
+        rel_dist: Tensor,
+        dist_limit_agent: Tensor,
+        ):
+        n_scene, n_agent = agent_valid.shape[0], agent_valid.shape[1]
+        _idx_scene = torch.arange(n_scene)[:, None, None]  # [n_scene, 1, 1]
+
+
+        for _ in range(inference_repeat_n):
+            agent_emb, agent_valid_reduced = self._mlp_agent(agent_attr, agent_valid)  # [n_scene, n_agent, hidden_dim]
+            if self.tf_agent is not None:
+                _agent_invalid = ~agent_valid_reduced
+                _agent_idx_knn, _agent_invalid_knn, _ = get_tgt_knn_idx(
+                    _agent_invalid,
+                    None,
+                    rel_dist[:, -n_agent:, -n_agent:],
+                    self.n_tgt_knn,
+                    dist_limit=dist_limit_agent,
+                )
+                _idx_agent = torch.arange(n_agent)[None, :, None]  # [1, n_agent, 1]
+                for mod in self.tf_agent:
+                    _tgt = agent_emb.unsqueeze(1).expand(-1, n_agent, -1, -1)
+                    if _agent_idx_knn is not None:
+                        _tgt = _tgt[_idx_scene, _idx_agent, _agent_idx_knn]
+                    agent_emb, _ = mod(
+                        src=agent_emb,  # [n_scene, n_agent, hidden_dim]
+                        src_padding_mask=_agent_invalid,  # [n_scene, n_agent]
+                        tgt=_tgt,
+                        tgt_padding_mask=_agent_invalid_knn,  # [n_scene, n_agent, n_tgt_knn]
+                    )
+
+        return agent_emb, agent_valid_reduced
+
+
     def forward(
         self,
         inference_repeat_n: int,
@@ -631,11 +739,13 @@ class IntraClassEncoder(nn.Module):
             agent_emb: [n_scene, n_agent, hidden_dim]
             agent_valid: [n_scene, n_agent]
         """
-        for _ in range(inference_repeat_n):
-            n_scene, n_tl = tl_valid.shape
-            n_map = map_valid.shape[1]
-            n_agent = agent_valid.shape[1]
-            _idx_scene = torch.arange(n_scene)[:, None, None]  # [n_scene, 1, 1]
+        # for _ in range(inference_repeat_n):
+        n_scene, n_tl = tl_valid.shape
+        n_map = map_valid.shape[1]
+        n_agent = agent_valid.shape[1]
+        _idx_scene = torch.arange(n_scene)[:, None, None]  # [n_scene, 1, 1]
+
+        # pdb.set_trace()
 
         # ! map
         _n_repeat_map = 1 if inference_cache_map else inference_repeat_n

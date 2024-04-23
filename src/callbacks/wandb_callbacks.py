@@ -6,10 +6,12 @@ from pytorch_lightning import Callback, Trainer
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.loggers import LoggerCollection, WandbLogger
 from pytorch_lightning.utilities import rank_zero_only
+import pdb
 
 
 def get_wandb_logger(trainer: Trainer) -> Optional[WandbLogger]:
     """Safely get Weights&Biases logger from Trainer."""
+    pdb.set_trace()
 
     if isinstance(trainer.logger, WandbLogger):
         return trainer.logger

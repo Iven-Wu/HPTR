@@ -2,6 +2,8 @@
 python -u src/run.py \
 trainer=womd \
 model=scg_womd \
+model.model.decoder.n_pred=6 \
+model.model.decoder.mlp_head.n_step_future=1 \
 datamodule=h5_womd \
 datamodule.batch_size=3 \
 datamodule.num_workers=8 \

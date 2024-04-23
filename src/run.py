@@ -7,6 +7,8 @@ from pytorch_lightning import seed_everything, LightningDataModule, LightningMod
 from pytorch_lightning.loggers import LightningLoggerBase
 import os
 
+import pdb
+
 
 def download_checkpoint(loggers, wb_ckpt) -> None:
     if os.environ.get("LOCAL_RANK", 0) == 0:

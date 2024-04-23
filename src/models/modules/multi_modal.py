@@ -3,6 +3,8 @@ import torch
 from torch import Tensor, nn
 from .mlp import MLP
 
+import pdb
+
 
 class MultiModalAnchors(nn.Module):
     def __init__(
@@ -58,6 +60,7 @@ class MultiModalAnchors(nn.Module):
         Returns:
             mm_emb: [n_scene*n_agent, n_pred, out_dim]
         """
+        # pdb.set_trace()
         # [n_scene*n_agent, n_pred, emb_dim]
         if self.use_agent_type:
             anchors = (self.anchors.unsqueeze(0) * agent_type[:, :, None, None]).sum(1)

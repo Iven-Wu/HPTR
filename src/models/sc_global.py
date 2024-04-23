@@ -679,7 +679,6 @@ class IntraClassEncoder(nn.Module):
         n_scene, n_agent = agent_valid.shape[0], agent_valid.shape[1]
         _idx_scene = torch.arange(n_scene)[:, None, None]  # [n_scene, 1, 1]
 
-
         for _ in range(inference_repeat_n):
             agent_emb, agent_valid_reduced = self._mlp_agent(agent_attr, agent_valid)  # [n_scene, n_agent, hidden_dim]
             if self.tf_agent is not None:
@@ -744,8 +743,6 @@ class IntraClassEncoder(nn.Module):
         n_map = map_valid.shape[1]
         n_agent = agent_valid.shape[1]
         _idx_scene = torch.arange(n_scene)[:, None, None]  # [n_scene, 1, 1]
-
-        # pdb.set_trace()
 
         # ! map
         _n_repeat_map = 1 if inference_cache_map else inference_repeat_n

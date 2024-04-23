@@ -4,7 +4,7 @@ from omegaconf import DictConfig
 import torch
 from torch import nn, Tensor
 from utils.pose_pe import PosePE
-
+import pdb
 
 class SceneCentricGlobal(nn.Module):
     def __init__(
@@ -155,6 +155,7 @@ class SceneCentricGlobal(nn.Module):
             prob_mask = torch.ones_like(batch["input/map_valid"]) * (1 - self.dropout_p_history)
             batch["input/map_valid"] &= torch.bernoulli(prob_mask).bool()
 
+        
         # ! prepare "input/agent"
         batch["input/agent_pos"] = batch["ref/pos"].squeeze(2)
         if self.pl_aggr:  # [n_scene, n_agent, agent_attr_dim]

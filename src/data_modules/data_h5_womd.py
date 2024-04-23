@@ -4,6 +4,7 @@ from pytorch_lightning import LightningDataModule
 from torch.utils.data import DataLoader, Dataset
 import numpy as np
 import h5py
+import pdb
 
 
 class DatasetBase(Dataset[Dict[str, np.ndarray]]):
@@ -11,6 +12,7 @@ class DatasetBase(Dataset[Dict[str, np.ndarray]]):
         super().__init__()
         self.tensor_size = tensor_size
         self.filepath = filepath
+        # pdb.set_trace()
         with h5py.File(self.filepath, "r", libver="latest", swmr=True) as hf:
             self.dataset_len = int(hf.attrs["data_len"])
 

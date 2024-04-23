@@ -196,9 +196,9 @@ def collate_map_features(map_features):
 
 def main():
     parser = ArgumentParser(allow_abbrev=True)
-    parser.add_argument("--data-dir", default="/cluster/scratch/zhejzhan/womd_scenario_v_1_2_0")
+    parser.add_argument("--data-dir", default="/data/waymo/scenario")
     parser.add_argument("--dataset", default="training")
-    parser.add_argument("--out-dir", default="/cluster/scratch/zhejzhan/h5_womd_hptr")
+    parser.add_argument("--out-dir", default="/data/waymo/hptr_data")
     parser.add_argument("--rand-pos", default=50.0, type=float, help="Meter. Set to -1 to disable.")
     parser.add_argument("--rand-yaw", default=3.14, type=float, help="Radian. Set to -1 to disable.")
     parser.add_argument("--dest-no-pred", action="store_true")

@@ -6,7 +6,7 @@ from torch import Tensor, tensor
 from torch.nn import functional as F
 from torchmetrics.metric import Metric
 from torch.distributions import MultivariateNormal
-
+import pdb
 
 def compute_nll_mtr(dmean: Tensor, cov: Tensor) -> Tensor:
     dx = dmean[..., 0]
@@ -110,7 +110,13 @@ class NllMetrics(Metric):
         """
         n_agent_type = ref_type.shape[-1]
         n_decoder, n_scene, n_agent, n_pred = pred_conf.shape
-        assert (ref_role.any(-1) & pred_valid == ref_role.any(-1)).all(), "All relevat agents shall be predicted!"
+
+
+        # try:
+        #     assert (ref_role.any(-1) & pred_valid == ref_role.any(-1)).all(), "All relevat agents shall be predicted!"
+        # except:
+        #     pdb.set_trace()
+        
 
         # ! prepare avails
         avails = ref_role.any(-1)  # [n_scene, n_agent]

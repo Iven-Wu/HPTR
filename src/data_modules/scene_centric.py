@@ -5,6 +5,8 @@ import torch
 from torch import nn, Tensor
 from utils.transform_utils import torch_rad2rot, torch_pos2local, torch_dir2local, torch_rad2local
 import pdb
+import numpy as np
+import random
 
 
 class SceneCentricPreProcessing(nn.Module):
@@ -83,12 +85,22 @@ class SceneCentricPreProcessing(nn.Module):
         """
         prefix = "" if self.training else "history/"
 
+        batch_size, seq_len, n_agent = batch["agent/valid"].shape
+
+        sample_start_idx = np.random.choice(range(seq_len-self.n_step_hist-self.n_step_future))
+        # self.step_current += sample_start_idx
+        curr_step_current = self.step_current + sample_start_idx
+
         # ! prepare "ref/"
         batch["ref/type"] = batch[prefix + "agent/type"]
         batch["ref/role"] = batch[prefix + "agent/role"]
 
+        # last_valid_step = (
+        #     self.step_current - batch[prefix + "agent/valid"][:, :self.step_current + 1].flip(1).max(1)[1]
+        # )  # [n_scene, n_agent]
+
         last_valid_step = (
-            self.step_current - batch[prefix + "agent/valid"][:, : self.step_current + 1].flip(1).max(1)[1]
+            curr_step_current - batch[prefix + "agent/valid"][:, sample_start_idx: sample_start_idx+ self.n_step_hist].flip(1).max(1)[1]
         )  # [n_scene, n_agent]
         i_scene = torch.arange(batch["ref/type"].shape[0]).unsqueeze(1)  # [n_scene, 1]
         i_agent = torch.arange(batch["ref/type"].shape[1]).unsqueeze(0)  # [1, n_agent]
@@ -99,10 +111,12 @@ class SceneCentricPreProcessing(nn.Module):
         batch["ref/yaw"] = ref_yaw
         batch["ref/rot"] = ref_rot
 
+        # pdb.set_trace()
+
         # ! prepare agents states
         # [n_scene, n_step, n_agent, ...] -> [n_scene, n_agent, n_step_hist, ...]
         for k in ("valid", "pos", "vel", "spd", "acc", "yaw_bbox", "yaw_rate"):
-            batch[f"sc/agent_{k}"] = batch[f"{prefix}agent/{k}"][:, : self.n_step_hist].transpose(1, 2)
+            batch[f"sc/agent_{k}"] = batch[f"{prefix}agent/{k}"][:, sample_start_idx:sample_start_idx+self.n_step_hist].transpose(1, 2)
 
         # ! prepare agents attributes
         for k in ("type", "role", "size"):
@@ -112,7 +126,7 @@ class SceneCentricPreProcessing(nn.Module):
         if "agent/valid" in batch.keys():
             batch["gt/cmd"] = batch["agent/cmd"]
             for k in ("valid", "spd", "pos", "vel", "yaw_bbox"):
-                batch[f"gt/{k}"] = batch[f"agent/{k}"][:, self.n_step_hist:self.n_step_hist+self.n_step_future ].transpose(1, 2).contiguous()
+                batch[f"gt/{k}"] = batch[f"agent/{k}"][:, sample_start_idx+self.n_step_hist:sample_start_idx+self.n_step_hist+self.n_step_future ].transpose(1, 2).contiguous()
 
             if self.gt_in_local:
                 # [n_scene, n_agent, n_step_hist, 2]
@@ -127,7 +141,7 @@ class SceneCentricPreProcessing(nn.Module):
 
         # ! prepare traffic lights
         for k in ("valid", "state", "pos", "dir"):
-            batch[f"sc/tl_{k}"] = batch[f"{prefix}tl_stop/{k}"][:, : self.n_step_hist]
+            batch[f"sc/tl_{k}"] = batch[f"{prefix}tl_stop/{k}"][:, sample_start_idx+self.n_step_hist:sample_start_idx+self.n_step_hist+self.n_step_future ]
 
         if self.mask_invalid:
             self.zero_mask_invalid(batch)

@@ -29,6 +29,7 @@ pre_processing:
     _target_: data_modules.scene_centric.SceneCentricPreProcessing
     gt_in_local: True
     mask_invalid: False
+    n_step_future: 80
   global:
     _target_: data_modules.sc_global.SceneCentricGlobal
     dropout_p_history: -1

@@ -4,11 +4,14 @@ from omegaconf import DictConfig
 import torch
 from torch import nn, Tensor
 from utils.transform_utils import torch_rad2rot, torch_pos2local, torch_dir2local, torch_rad2local
+import pdb
 
 
 class SceneCentricPreProcessing(nn.Module):
-    def __init__(self, time_step_current: int, data_size: DictConfig, gt_in_local: bool, mask_invalid: bool) -> None:
+    def __init__(self, time_step_current: int, n_step_future: int, data_size: DictConfig, gt_in_local: bool, mask_invalid: bool) -> None:
         super().__init__()
+        self.data_size = data_size
+        self.n_step_future = n_step_future
         self.step_current = time_step_current
         self.n_step_hist = time_step_current + 1
         self.gt_in_local = gt_in_local
@@ -109,7 +112,7 @@ class SceneCentricPreProcessing(nn.Module):
         if "agent/valid" in batch.keys():
             batch["gt/cmd"] = batch["agent/cmd"]
             for k in ("valid", "spd", "pos", "vel", "yaw_bbox"):
-                batch[f"gt/{k}"] = batch[f"agent/{k}"][:, self.n_step_hist :].transpose(1, 2).contiguous()
+                batch[f"gt/{k}"] = batch[f"agent/{k}"][:, self.n_step_hist:self.n_step_hist+self.n_step_future ].transpose(1, 2).contiguous()
 
             if self.gt_in_local:
                 # [n_scene, n_agent, n_step_hist, 2]

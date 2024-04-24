@@ -311,7 +311,7 @@ class Decoder(nn.Module):
         #  generate output
         anchor_emb = anchor_emb.view(n_scene, n_agent, self.n_pred, self.hidden_dim)
 
-        pdb.set_trace()
+        # pdb.set_trace()
 
         conf, pred = self.mlp_head(agent_valid, anchor_emb, agent_type)
 
@@ -676,8 +676,12 @@ class IntraClassEncoder(nn.Module):
         rel_dist: Tensor,
         dist_limit_agent: Tensor,
         ):
+
+
         n_scene, n_agent = agent_valid.shape[0], agent_valid.shape[1]
         _idx_scene = torch.arange(n_scene)[:, None, None]  # [n_scene, 1, 1]
+
+        # pdb.set_trace()
 
         for _ in range(inference_repeat_n):
             agent_emb, agent_valid_reduced = self._mlp_agent(agent_attr, agent_valid)  # [n_scene, n_agent, hidden_dim]

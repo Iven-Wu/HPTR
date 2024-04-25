@@ -15,5 +15,5 @@ submission = motion_submission_pb2.MotionChallengeSubmission()
 # Load and deserialize the data
 with open(file_path, "rb") as f:
     submission.ParseFromString(f.read())
-
+pdb.set_trace()
 len(submission.scenario_preditions)

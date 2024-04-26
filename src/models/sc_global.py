@@ -10,7 +10,7 @@ from .modules.transformer import TransformerBlock
 from .modules.decoder_ensemble import DecoderEnsemble, MLPHead
 from .modules.rpe import get_rel_dist, get_tgt_knn_idx
 from .modules.multi_modal import MultiModalAnchors
-
+import pdb
 
 class Decoder(nn.Module):
     def __init__(
@@ -513,6 +513,8 @@ class SceneCentricGlobal(nn.Module):
                 knn_idx_all2all = None
                 knn_invalid_all2all = None
 
+            # pdb.set_trace()
+
             conf, pred = self.decoder(
                 agent_type=agent_type,
                 agent_valid=agent_valid,
@@ -681,6 +683,8 @@ class IntraClassEncoder(nn.Module):
                         tgt=_tgt,
                         tgt_padding_mask=_tl_invalid_knn,  # [n_scene, n_tl, n_tgt_knn]
                     )
+
+
 
         # ! agents
         for _ in range(inference_repeat_n):

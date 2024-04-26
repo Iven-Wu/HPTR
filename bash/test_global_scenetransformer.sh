@@ -16,4 +16,4 @@ loggers.wandb.name="hptr_womd_val" \
 loggers.wandb.project="sim_agents" \
 loggers.wandb.entity="team-wu" \
 datamodule.data_dir='/home/fuyang/code/HPTR/datasets/waymo' \
-hydra.run.dir='logs/${now:%Y-%m-%d}/${now:%H-%M-%S}' 
+hydra.run.dir='logs/vis_glb10/${now:%Y-%m-%d}/${now:%H-%M-%S}' 
